@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ravi Live Chat</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+    <style>
+        body { font-family: Arial; background: #ece5dd; margin: 0; }
+        #header { background: #075e54; color: white; padding: 15px; text-align: center; position: fixed; width: 100%; top: 0; }
+        #chat-box { margin-top: 60px; margin-bottom: 60px; padding: 15px; display: flex; flex-direction: column; }
+        .msg { padding: 8px 12px; margin: 5px; border-radius: 8px; max-width: 80%; word-wrap: break-word; }
+        .sent { align-self: flex-end; background: #dcf8c6; }
+        .received { align-self: flex-start; background: white; }
+        #input-container { position: fixed; bottom: 0; width: 100%; background: #f0f0f0; padding: 10px; display: flex; }
+        input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ccc; outline: none; }
+        button { background: #128c7e; color: white; border: none; padding: 10px 20px; margin-left: 5px; border-radius: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="header">Ravi's Live Group Chat</div>
+<div id="chat-box"></div>
+
+<div id="input-container">
+    <input type="text" id="messageInput" placeholder="मैसेज टाइप करें...">
+    <button onclick="sendMessage()">भेजें</button>
+</div>
+
+<script>
+    // 1. यहाँ अपना Firebase Config कोड पेस्ट करें
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    // Firebase चालू करें
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // मैसेज भेजना
+    function sendMessage() {
+        const text = document.getElementById("messageInput").value;
+        if (text) {
+            db.ref("messages").push().set({
+                user: "User_" + Math.floor(Math.random() * 100), // यहाँ आप अपना नाम डाल सकते हैं
+                message: text,
+                time: Date.now()
+            });
+            document.getElementById("messageInput").value = "";
+        }
+    }
+
+    // मैसेज प्राप्त करना (Live)
+    db.ref("messages").on("child_added", (snapshot) => {
+        const data = snapshot.val();
+        const chatBox = document.getElementById("chat-box");
+        const msgDiv = document.createElement("div");
+        msgDiv.classList.add("msg", "received");
+        msgDiv.innerHTML = `<b>${data.user}:</b> <br> ${data.message}`;
+        chatBox.appendChild(msgDiv);
+        window.scrollTo(0, document.body.scrollHeight);
+    });
+</script>
+
+</body>
+</html>
