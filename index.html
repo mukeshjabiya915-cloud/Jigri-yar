@@ -1,0 +1,95 @@
+[3/9, 1:46 PM] Ravi Bhai: const express = require('express');
+const app = express();
+const http = require('http').Server(app);
+const io = require('socket.io')(http);
+
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
+let onlineUsers = {};
+
+io.on('connection', (socket) => {
+  socket.on('join-call', (data) => {
+    onlineUsers[socket.id] = { name: data.name, gender: data.gender };
+    console.log(data.name + " जुड़ गया है");
+    
+    // सबको खबर करें कि कोई नया व्यक्ति आया है
+    socket.broadcast.emit('user-joined', { id: socket.id, name: data.name });
+  });
+
+  socket.on('disconnect', () => {
+    delete onlineUsers[socket.id];
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log('सर्वर चालू है: पोर्ट ' + PORT);
+});
+[3/9, 1:46 PM] Ravi Bhai: <!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gola Yaari - Live Link Call</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; margin: 0; text-align: center; }
+        .video-box { position: relative; width: 100%; height: 75vh; background: #000; }
+        video { width: 100%; height: 100%; object-fit: cover; }
+        #my-video { width: 110px; height: 150px; position: absolute; bottom: 20px; right: 20px; border: 2px solid #ff4757; border-radius: 10px; z-index: 10; }
+        .controls { padding: 20px; }
+        .btn { background: #25d366; color: white; border: none; padding: 12px 25px; border-radius: 25px; font-size: 16px; cursor: pointer; margin: 5px; }
+        .share-btn { background: #3498db; }
+    </style>
+</head>
+<body>
+
+<div id="login">
+    <h2 style="margin-top:50px;">Gola Yaari 🎥</h2>
+    <input type="text" id="userName" placeholder="अपना नाम लिखें" style="padding:10px; border-radius:5px;"><br><br>
+    <button class="btn" onclick="startApp()">लाइव शुरू करें</button>
+</div>
+
+<div id="call-area" style="display:none;">
+    <div id="info" style="background:rgba(0,0,0,0.5); padding:10px;">पार्टनर का इंतज़ार है...</div>
+    <div class="video-box">
+        <video id="remote-video" autoplay playsinline></video>
+        <video id="my-video" autoplay playsinline muted></video>
+    </div>
+    <div class="controls">
+        <button class="btn share-btn" onclick="shareLink()">लिंक दोस्तों को भेजें</button>
+        <button class="btn" style="background:#ff4757;" onclick="location.reload()">कॉल काटें</button>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let localStream;
+
+    async function startApp() {
+        const name = document.getElementById('userName').value;
+        if(!name) return alert("नाम लिखें!");
+
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('call-area').style.display = 'block';
+
+        // कैमरा और माइक चालू करना
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('my-video').srcObject = localStream;
+
+        socket.emit('join-call', { name: name });
+    }
+
+    function shareLink() {
+        const link = window.location.href;
+        alert("इस लिंक को कॉपी करें और व्हाट्सएप पर भेजें:\n" + link);
+    }
+
+    socket.on('user-joined', (data) => {
+        document.getElementById('info').innerText = data.name + " लाइन पर है!";
+    });
+</script>
+</body>
+</html>
