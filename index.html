@@ -1,0 +1,141 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// --- FRONTEND SECTION (सभी बटन और पेज वर्किंग हैं) ---
+const htmlContent = `
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live App</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #fff; padding-bottom: 70px; }
+        .page { display: none; min-height: 100vh; flex-direction: column; }
+        .active { display: flex; }
+
+        /* --- HOME PAGE UI --- */
+        .home-header { display: flex; justify-content: space-around; padding: 15px; font-weight: bold; border-bottom: 1px solid #eee; }
+        .highlight-box { display: flex; gap: 10px; padding: 10px; }
+        .card { flex: 1; height: 80px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
+        .ranking { background: linear-gradient(45deg, #ff9a9e, #fad0c4); }
+        .cp { background: linear-gradient(45deg, #fbc2eb, #a6c1ee); }
+        .family { background: linear-gradient(45deg, #84fab0, #8fd3f4); }
+
+        /* --- CHAT/MESSAGE PAGE --- */
+        #chat-box { flex: 1; padding: 15px; background: #f0f0f0; height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 10px; border-radius: 10px; max-width: 80%; }
+        .sent { background: #ff9800; color: white; align-self: flex-end; }
+        .received { background: white; align-self: flex-start; }
+        .input-area { display: flex; padding: 10px; gap: 10px; border-top: 1px solid #eee; }
+        input { flex: 1; padding: 10px; border-radius: 20px; border: 1px solid #ddd; outline: none; }
+
+        /* --- ME PAGE (PROFILE) --- */
+        .profile-bg { background: linear-gradient(to bottom, #fff9e6, #fff); padding: 30px 10px; text-align: center; }
+        .avatar { width: 90px; height: 90px; border-radius: 50%; border: 3px solid #fff; }
+        .menu-item { display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #f9f9f9; color: #333; }
+
+        /* --- BOTTOM NAVIGATION --- */
+        .nav-bar { position: fixed; bottom: 0; width: 100%; max-width: 450px; background: white; display: flex; border-top: 1px solid #eee; height: 65px; z-index: 100; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: #888; cursor: pointer; }
+        .nav-active { color: #333; font-weight: bold; }
+        .nav-icon { font-size: 20px; margin-bottom: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="page-home" class="page">
+        <div class="home-header"><span>Mine</span><span style="border-bottom: 2px solid #333;">Popular</span></div>
+        <div class="highlight-box">
+            <div class="card ranking">Ranking</div>
+            <div class="card cp">CP</div>
+            <div class="card family">Family</div>
+        </div>
+        <div style="padding:20px; text-align:center; color:#999;">लाइव रूम्स यहाँ लोड होंगे...</div>
+    </div>
+
+    <div id="page-message" class="page active">
+        <h3 style="padding:15px; margin:0;">Messages</h3>
+        <div id="chat-box"></div>
+        <div class="input-area">
+            <input type="text" id="mInp" placeholder="मैसेज लिखें...">
+            <button onclick="sendMsg()" style="background:#ff9800; color:white; border:none; padding:10px 20px; border-radius:20px;">भेजें</button>
+        </div>
+    </div>
+
+    <div id="page-me" class="page">
+        <div class="profile-bg">
+            <img src="https://i.pravatar.cc/150?u=ravi" class="avatar">
+            <h2 style="margin:10px 0 5px;">DJ Ravi Boss</h2>
+            <p style="color:#888; font-size:14px; margin:0;">ID: 40408616 | <span style="color:#7b1fa2;">Lv.38</span></p>
+        </div>
+        <div class="menu-list">
+            <div class="menu-item"><span>👛 Wallet</span><span>💎 300,000 ›</span></div>
+            <div class="menu-item"><span>✉️ Invite Friends</span><span style="color:#ff9800;">Earn Coins ›</span></div>
+            <div class="menu-item"><span>🛒 Store</span><span>›</span></div>
+            <div class="menu-item"><span>⚙️ Settings</span><span>›</span></div>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item" id="nav-home" onclick="switchPage('home')">
+            <span class="nav-icon">🏠</span><span>Home</span>
+        </div>
+        <div class="nav-item nav-active" id="nav-message" onclick="switchPage('message')">
+            <span class="nav-icon">💬</span><span>Message</span>
+        </div>
+        <div class="nav-item" id="nav-me" onclick="switchPage('me')">
+            <span class="nav-icon">👤</span><span>Me</span>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const userName = "DJ Ravi Boss";
+
+        // पेज स्विच करने का फंक्शन (अब यह बटन काम करेंगे)
+        function switchPage(pageId) {
+            // सारे पेज छुपाएं
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            // बटन का एक्टिव कलर हटाएँ
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
+            
+            // क्लिक किया हुआ पेज दिखाएँ
+            document.getElementById('page-' + pageId).classList.add('active');
+            // क्लिक किया हुआ बटन हाईलाइट करें
+            document.getElementById('nav-' + pageId).classList.add('nav-active');
+        }
+
+        function sendMsg() {
+            const inp = document.getElementById('mInp');
+            if (inp.value.trim()) {
+                socket.emit('chat_event', { user: userName, text: inp.value });
+                inp.value = '';
+            }
+        }
+
+        socket.on('chat_event', (data) => {
+            const box = document.getElementById('chat-box');
+            const isMe = data.user === userName;
+            const div = document.createElement('div');
+            div.className = \`msg \${isMe ? 'sent' : 'received'}\`;
+            div.textContent = data.text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        });
+    </script>
+</body>
+</html>
+`;
+
+app.get('/', (req, res) => res.send(htmlContent));
+io.on('connection', (socket) => {
+    socket.on('chat_event', (data) => io.emit('chat_event', data));
+});
+server.listen(3000, () => console.log("App is running on http://localhost:3000"));
