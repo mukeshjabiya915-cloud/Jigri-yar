@@ -1,0 +1,44 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+const htmlContent = `
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat VIP</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #fff; padding-bottom: 70px; }
+        .page { display: none; min-height: 100vh; flex-direction: column; }
+        .active { display: flex; }
+
+        /* --- HOME PAGE UI --- */
+        .home-header { display: flex; justify-content: space-around; padding: 15px; font-weight: bold; border-bottom: 1px solid #eee; }
+        .highlight-cards { display: flex; gap: 10px; padding: 10px; }
+        .card { flex: 1; height: 85px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .ranking { background: linear-gradient(135deg, #ff9a9e, #fad0c4); }
+        .cp { background: linear-gradient(135deg, #fbc2eb, #a6c1ee); }
+        .family { background: linear-gradient(135deg, #84fab0, #8fd3f4); }
+        .card:active { transform: scale(0.95); }
+
+        /* --- CHAT PAGE UI --- */
+        #chat-box { flex: 1; padding: 15px; background: #f0f2f5; height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 10px 15px; border-radius: 18px; max-width: 75%; font-size: 14px; }
+        .sent { background: #0084ff; color: white; align-self: flex-end; }
+        .received { background: #e4e6eb; color: #000; align-self: flex-start; }
+        .input-area { display: flex; padding: 10px; gap: 10px; background: #fff; border-top: 1px solid #ddd; }
+        input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #ddd; outline: none; }
+
+        /* --- ME PAGE (PROFILE) --- */
+        .profile-section { background: linear-gradient(180deg, #fff9e6, #fff); padding: 30px 10px; text-align: center; }
+        .avatar-box { position: relative; display: inline-block; }
+        .avatar { width: 95px; height: 95px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .lvl-tag { position: absolute; bottom: 0; right: 0; background: #7b1fa2; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+        .menu-list { padding: 5px; }
+        .menu-
