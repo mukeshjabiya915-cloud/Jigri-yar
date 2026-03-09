@@ -1,0 +1,122 @@
+[3/9, 2:10 PM] Ravi Bhai: const express = require('express');
+const app = express();
+const http = require('http').Server(app);
+const io = require('socket.io')(http);
+
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
+let users = {}; // नंबर और सॉकेट आईडी को सेव करने के लिए
+
+io.on('connection', (socket) => {
+  // आईडी बनाना (नंबर के साथ)
+  socket.on('create-id', (data) => {
+    users[data.phone] = socket.id;
+    socket.phone = data.phone;
+    console.log("आईडी बनी: " + data.phone);
+    socket.emit('login-success', "आपकी आईडी " + data.phone + " रजिस्टर हो गई है।");
+  });
+
+  // डायरेक्ट कॉल सिग्नल
+  socket.on('signal', (data) => {
+    io.emit('signal', data); 
+  });
+
+  socket.on('disconnect', () => {
+    delete users[socket.phone];
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => console.log('Gola ID Server Live!'));
+[3/9, 2:10 PM] Ravi Bhai: <!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gola Yaari ID Login</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { background: #121212; color: #fff; text-align: center; font-family: sans-serif; margin: 0; }
+        .login-box { padding: 50px 20px; }
+        input { padding: 12px; border-radius: 8px; border: none; width: 80%; margin-bottom: 20px; }
+        .btn { background: #25d366; color: white; border: none; padding: 15px 30px; border-radius: 30px; cursor: pointer; font-weight: bold; }
+        video { width: 100%; height: 45vh; background: #000; object-fit: cover; }
+        #local { width: 100px; height: 130px; position: absolute; bottom: 20px; right: 20px; border: 2px solid #ff4757; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="login-screen" class="login-box">
+    <h2 style="color: #ff4757;">Gola Yaari Login 🎥</h2>
+    <p>अपना मोबाइल नंबर डालकर आईडी बनाएं:</p>
+    <input type="number" id="phoneInput" placeholder="मोबाइल नंबर लिखें"> <br>
+    <button class="btn" onclick="login()">ID बनाएं और जॉइन करें</button>
+</div>
+
+<div id="call-screen" style="display:none; position: relative;">
+    <div id="info" style="padding: 10px; background: #222; color: gold;">आईडी एक्टिव है...</div>
+    <video id="remote" autoplay playsinline></video>
+    <video id="local" autoplay playsinline muted></video>
+    <div style="padding: 20px;">
+        <button class="btn" style="background:red;" onclick="location.reload()">ID लॉगआउट करें</button>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let localStream;
+    let peerConnection;
+    const iceServers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+    async function login() {
+        const phone = document.getElementById('phoneInput').value;
+        if(phone.length < 10) return alert("सही मोबाइल नंबर लिखें!");
+
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('call-screen').style.display = 'block';
+
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        document.getElementById('local').srcObject = localStream;
+
+        socket.emit('create-id', { phone: phone });
+    }
+
+    socket.on('login-success', (msg) => {
+        document.getElementById('info').innerText = msg;
+        // आईडी बनने के बाद सिग्नल भेजें
+        socket.emit('signal', { type: 'ready' });
+    });
+
+    socket.on('signal', async (data) => {
+        if (data.type === 'ready') {
+            createPeer();
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit('signal', { sdp: offer });
+        } else if (data.sdp) {
+            if (!peerConnection) createPeer();
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            if (data.sdp.type === 'offer') {
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                socket.emit('signal', { sdp: answer });
+            }
+        } else if (data.candidate) {
+            if (peerConnection) await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+        }
+    });
+
+    function createPeer() {
+        peerConnection = new RTCPeerConnection(iceServers);
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        peerConnection.onicecandidate = (e) => {
+            if (e.candidate) socket.emit('signal', { candidate: e.candidate });
+        };
+        peerConnection.ontrack = (e) => {
+            document.getElementById('remote').srcObject = e.streams[0];
+        };
+    }
+</script>
+</body>
+</html>
