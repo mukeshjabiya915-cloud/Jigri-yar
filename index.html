@@ -1,0 +1,167 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+const htmlContent = `
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat Pro</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #fff; padding-bottom: 70px; }
+        .page { display: none; min-height: 100vh; flex-direction: column; }
+        .active { display: flex; }
+
+        /* --- HOME SCREEN (As per Photo 1000023503.jpg) --- */
+        .home-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; background: #fff; }
+        .top-tabs { display: flex; gap: 20px; font-weight: bold; color: #888; }
+        .tab-active { color: #333; border-bottom: 2px solid #333; }
+        
+        /* Highlight Cards */
+        .highlight-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 10px; }
+        .card { border-radius: 10px; padding: 15px 5px; text-align: center; color: white; font-weight: bold; font-size: 14px; }
+        .ranking { background: linear-gradient(135deg, #ff9a9e, #fad0c4); }
+        .cp { background: linear-gradient(135deg, #fbc2eb, #a6c1ee); }
+        .family { background: linear-gradient(135deg, #84fab0, #8fd3f4); }
+
+        /* Filter Chips */
+        .filter-bar { display: flex; gap: 10px; padding: 10px; overflow-x: auto; white-space: nowrap; }
+        .chip { padding: 5px 15px; border-radius: 20px; background: #f0f0f0; font-size: 13px; cursor: pointer; }
+        .chip.active-chip { background: #00d2ff; color: white; }
+
+        /* Grid for Live Rooms */
+        .live-grid { display: grid; grid-cols: 2; display: flex; flex-wrap: wrap; padding: 10px; gap: 10px; }
+        .room-card { width: calc(50% - 5px); background: #eee; height: 180px; border-radius: 12px; position: relative; overflow: hidden; }
+        .room-card img { width: 100%; height: 100%; object-fit: cover; }
+        .room-info { position: absolute; bottom: 0; padding: 5px; color: white; background: rgba(0,0,0,0.3); width: 100%; font-size: 12px; }
+
+        /* --- SEARCH BAR --- */
+        .search-area { padding: 10px; display: flex; gap: 5px; }
+        .search-area input { flex: 1; padding: 8px; border-radius: 20px; border: 1px solid #ddd; }
+
+        /* --- CHAT PAGE --- */
+        #chat-box { flex: 1; padding: 15px; background: #f7f7f7; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; height: 60vh; }
+        .bubble { padding: 10px; border-radius: 10px; max-width: 80%; }
+        .sent { background: #0084ff; color: white; align-self: flex-end; }
+        .received { background: #e4e6eb; align-self: flex-start; }
+        .input-area { display: flex; padding: 10px; gap: 10px; border-top: 1px solid #eee; }
+
+        /* --- BOTTOM NAV --- */
+        .nav-bar { position: fixed; bottom: 0; width: 100%; max-width: 450px; background: white; display: flex; border-top: 1px solid #eee; height: 65px; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); }
+        .nav-item { flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; font-size: 11px; color: #888; cursor: pointer; }
+        .nav-active { color: #333; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="home" class="page active">
+        <div class="home-header">
+            <span>🏠</span>
+            <div class="top-tabs">
+                <span>Mine</span> <span class="tab-active">Popular</span>
+            </div>
+            <span onclick="toggleSearch()">🔍</span>
+        </div>
+        
+        <div class="search-area" id="searchBar" style="display:none;">
+            <input type="text" id="sInp" placeholder="Search ID: 40408616">
+            <button onclick="alert('Searching...')">Search</button>
+        </div>
+
+        <div class="highlight-cards">
+            <div class="card ranking">Ranking</div>
+            <div class="card cp">CP</div>
+            <div class="card family">Family</div>
+        </div>
+
+        <div class="filter-bar">
+            <div class="chip active-chip">🔥 Popular</div>
+            <div class="chip">Game</div>
+            <div class="chip">Video/Music</div>
+        </div>
+
+        <div class="live-grid">
+            <div class="room-card"><img src="https://i.pravatar.cc/150?u=1"><div class="room-info">Alina Khan... 🇮🇳</div></div>
+            <div class="room-card"><img src="https://i.pravatar.cc/150?u=2"><div class="room-info">Jai Shri Ram 🚩</div></div>
+            <div class="room-card"><img src="https://i.pravatar.cc/150?u=3"><div class="room-info">Live Party 🎤</div></div>
+            <div class="room-card"><img src="https://i.pravatar.cc/150?u=4"><div class="room-info">Game Room 🎮</div></div>
+        </div>
+    </div>
+
+    <div id="message" class="page">
+        <h3 style="padding:15px;">Messages</h3>
+        <div id="chat-box"></div>
+        <div class="input-area">
+            <input type="text" id="mInp" placeholder="मैसेज लिखें...">
+            <button onclick="send()">भेजें</button>
+        </div>
+    </div>
+
+    <div id="me" class="page">
+        <div style="text-align:center; padding:30px; background:#fff9e6;">
+            <img src="https://i.pravatar.cc/150?u=ravi" style="width:90px; border-radius:50%; border:3px solid #fff;">
+            <h2>DJ Ravi Boss</h2>
+            <p>ID: 40408616 | Lv.38</p>
+        </div>
+        <div style="padding:20px;">
+            <p>👛 Wallet: 💎 300,000</p>
+            <p>✉️ Invite Friends</p>
+            <p>🛒 Store</p>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item nav-active" onclick="showPage('home')">😊<br>Home</div>
+        <div class="nav-item" onclick="showPage('message')">💬<br>Message</div>
+        <div class="nav-item" onclick="showPage('me')">👤<br>Me</div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const myName = "DJ Ravi Boss";
+
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('nav-active'));
+            event.currentTarget.classList.add('nav-active');
+        }
+
+        function toggleSearch() {
+            const s = document.getElementById('searchBar');
+            s.style.display = s.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function send() {
+            const i = document.getElementById('mInp');
+            if(i.value) {
+                socket.emit('chat', { u: myName, t: i.value });
+                i.value = '';
+            }
+        }
+
+        socket.on('chat', (d) => {
+            const b = document.getElementById('chat-box');
+            const div = document.createElement('div');
+            div.className = \`bubble \${d.u === myName ? 'sent' : 'received'}\`;
+            div.textContent = d.t;
+            b.appendChild(div);
+            b.scrollTop = b.scrollHeight;
+        });
+    </script>
+</body>
+</html>
+`;
+
+app.get('/', (req, res) => res.send(htmlContent));
+io.on('connection', (socket) => {
+    socket.on('chat', (d) => io.emit('chat', d));
+});
+server.listen(3000, () => console.log("http://localhost:3000"));
