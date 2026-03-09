@@ -1,0 +1,146 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// --- FRONTEND SECTION (बटनों और पेज स्विचिंग के साथ) ---
+const htmlContent = `
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat Pro</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f8f9fa; }
+        .page { display: none; height: 100vh; flex-direction: column; }
+        .active { display: flex; }
+
+        /* Bottom Nav Bar */
+        .nav-bar { position: fixed; bottom: 0; width: 100%; max-width: 450px; background: #fff; display: flex; border-top: 1px solid #ddd; height: 65px; z-index: 1000; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: #888; cursor: pointer; }
+        .nav-item.active-nav { color: #ff9800; font-weight: bold; }
+        .nav-icon { font-size: 22px; margin-bottom: 2px; }
+
+        /* Pages Content */
+        .content { flex: 1; overflow-y: auto; padding-bottom: 70px; }
+        
+        /* Chat Page Specific */
+        #chat-box { flex: 1; padding: 15px; background: #e5ddd5; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+        .bubble { padding: 10px; border-radius: 12px; max-width: 80%; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .sent { background: #dcf8c6; align-self: flex-end; }
+        .received { background: #fff; align-self: flex-start; }
+        .input-area { padding: 10px; background: #fff; display: flex; gap: 10px; border-top: 1px solid #ddd; }
+        input { flex: 1; padding: 12px; border-radius: 25px; border: 1px solid #ddd; outline: none; }
+        .send-btn { background: #ff9800; color: white; border: none; padding: 0 20px; border-radius: 20px; cursor: pointer; }
+
+        /* Profile Header Style (जैसा फोटो में है) */
+        .header-bg { background: linear-gradient(180deg, #fff9e6, #fff); padding: 20px; text-align: center; }
+        .avatar { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+
+    <div id="page-home" class="page">
+        <div class="content">
+            <h2 style="padding:20px;">Home - Live Rooms</h2>
+            <center><p>यहाँ लाइव स्ट्रीम्स दिखेंगी...</p></center>
+        </div>
+    </div>
+
+    <div id="page-moments" class="page">
+        <div class="content">
+            <h2 style="padding:20px;">Moments</h2>
+            <center><p>दोस्तों की पोस्ट यहाँ देखें...</p></center>
+        </div>
+    </div>
+
+    <div id="page-message" class="page active">
+        <div id="chat-box"></div>
+        <div class="input-area">
+            <input type="text" id="mInp" placeholder="कुछ लिखें..." autocomplete="off">
+            <button class="send-btn" onclick="sendMsg()">भेजें</button>
+        </div>
+    </div>
+
+    <div id="page-me" class="page">
+        <div class="content">
+            <div class="header-bg">
+                <img src="https://i.pravatar.cc/150?u=ravi" class="avatar">
+                <h3>DJ Ravi Boss</h3>
+                <p style="color:#888;">ID: 40408616</p>
+            </div>
+            <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+                <span>👛 Wallet</span><span>💎 300,000 ›</span>
+            </div>
+            <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">
+                <span>🔥 Level</span><span style="background:#7b1fa2; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px;">Lv.38</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-bar">
+        <div class="nav-item" onclick="switchPage('home')">
+            <span class="nav-icon">🏠</span><span>Home</span>
+        </div>
+        <div class="nav-item" onclick="switchPage('moments')">
+            <span class="nav-icon">🌍</span><span>Moments</span>
+        </div>
+        <div class="nav-item active-nav" id="nav-message" onclick="switchPage('message')">
+            <span class="nav-icon">💬</span><span>Message</span>
+        </div>
+        <div class="nav-item" onclick="switchPage('me')">
+            <span class="nav-icon">👤</span><span>Me</span>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const userName = "DJ Ravi Boss";
+
+        // पेज बदलने का फंक्शन
+        function switchPage(pageName) {
+            // सारे पेज छुपाएं
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            // चुने हुए पेज को दिखाएं
+            document.getElementById('page-' + pageName).classList.add('active');
+            
+            // नेविगेशन बार का कलर बदलें
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active-nav'));
+            event.currentTarget.classList.add('active-nav');
+        }
+
+        function sendMsg() {
+            const inp = document.getElementById('mInp');
+            if (inp.value.trim()) {
+                socket.emit('chat_msg', { user: userName, text: inp.value });
+                inp.value = '';
+            }
+        }
+
+        socket.on('chat_msg', (data) => {
+            const box = document.getElementById('chat-box');
+            const isMe = data.user === userName;
+            const div = document.createElement('div');
+            div.className = \`bubble \${isMe ? 'sent' : 'received'}\`;
+            div.textContent = data.text;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        });
+    </script>
+</body>
+</html>
+`;
+
+app.get('/', (req, res) => res.send(htmlContent));
+
+io.on('connection', (socket) => {
+    socket.on('chat_msg', (data) => io.emit('chat_msg', data));
+});
+
+const PORT = 3000;
+server.listen(PORT, () => console.log("Live App on http://localhost:3000"));
