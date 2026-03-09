@@ -1,0 +1,11 @@
+// सर्वर साइड कोड का एक छोटा हिस्सा
+const io = require("socket.io")(3000);
+
+io.on("connection", (socket) => {
+  console.log("एक नया यूजर जुड़ गया है!");
+
+  socket.on("send-message", (data) => {
+    // यहाँ मैसेज और गेम डेटा सबको भेजा जाता है
+    io.emit("receive-message", data);
+  });
+});
