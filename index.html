@@ -1,0 +1,91 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// --- FRONTEND SECTION (HTML/CSS/JS) ---
+const htmlContent = `
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat App</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .chat-container { width: 90%; max-width: 400px; background: white; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; height: 80vh; }
+        .header { background: linear-gradient(135deg, #ff9800, #f44336); color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 1.2rem; }
+        #messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message { padding: 8px 12px; border-radius: 10px; max-width: 80%; word-wrap: break-word; font-size: 0.9rem; }
+        .received { background: #e4e6eb; align-self: flex-start; }
+        .sent { background: #ff9800; color: white; align-self: flex-end; }
+        .input-area { padding: 10px; border-top: 1px solid #ddd; display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
+        button { background: #ff9800; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="header">Live Chat - Ravi Boss</div>
+        <div id="messages"></div>
+        <div class="input-area">
+            <input type="text" id="msgInput" placeholder="मैसेज टाइप करें..." autocomplete="off">
+            <button onclick="send()">भेजें</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const messagesDiv = document.getElementById('messages');
+        const input = document.getElementById('msgInput');
+
+        function send() {
+            if (input.value) {
+                socket.emit('chat_msg', input.value);
+                input.value = '';
+            }
+        }
+
+        socket.on('chat_msg', (msg) => {
+            const div = document.createElement('div');
+            div.className = 'message received'; 
+            div.textContent = msg;
+            messagesDiv.appendChild(div);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+
+        // Enter key से मैसेज भेजने के लिए
+        input.addEventListener("keypress", (event) => {
+            if (event.key === "Enter") send();
+        });
+    </script>
+</body>
+</html>
+`;
+
+// --- BACKEND LOGIC ---
+
+app.get('/', (req, res) => {
+    res.send(htmlContent);
+});
+
+io.on('connection', (socket) => {
+    console.log('User Connected: ' + socket.id);
+
+    socket.on('chat_msg', (data) => {
+        io.emit('chat_msg', data); // सबको मैसेज भेजें
+    });
+
+    socket.on('disconnect', () => {
+        console.log('User Disconnected');
+    });
+});
+
+const PORT = 3000;
+server.listen(PORT, () => {
+    console.log("सर्वर यहाँ चल रहा है: http://localhost:3000");
+});
