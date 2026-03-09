@@ -1,0 +1,45 @@
+using UnityEngine;
+
+public class TPSCamera : MonoBehaviour {
+    public Transform target; // यहाँ अपने Player को ड्रैग करें
+    public Vector3 offset = new Vector3(0, 2, -4); // खिलाड़ी से दूरी
+    public float sensitivity = 3f;
+
+    void Start() {
+        // माउस कर्सर को गेम के बीच में लॉक करना
+        Cursor.lockState = CursorLockMode.Locked;
+    }
+
+    void LateUpdate() {
+        // माउस की मूवमेंट के हिसाब से कैमरा घुमाना
+        float mouseX = Input.GetAxis("Mouse X") * sensitivity;
+        target.Rotate(Vector3.up * mouseX);
+
+        // कैमरे को खिलाड़ी के पीछे फिक्स रखना
+        transform.position = target.position + target.TransformDirection(offset);
+        transform.LookAt(target.position + Vector3.up * 1.5f);
+    }
+}using UnityEngine;
+
+public class PlayerAnimator : MonoBehaviour {
+    Animator anim;
+    CharacterController controller;
+
+    void Start() {
+        anim = GetComponent<Animator>();
+        controller = GetComponent<CharacterController>();
+    }
+
+    void Update() {
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+        
+        // चेक करें कि क्या खिलाड़ी हिल रहा है
+        bool isMoving = (horizontal != 0 || vertical != 0);
+        bool isRunning = isMoving && Input.GetKey(KeyCode.LeftShift);
+
+        // एनीमेशन पैरामीटर्स सेट करना
+        anim.SetBool("isWalking", isMoving);
+        anim.SetBool("isRunning", isRunning);
+    }
+}
