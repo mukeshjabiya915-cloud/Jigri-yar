@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gola Ji Custom Launcher</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .header {
+            margin-top: 50px;
+            text-align: center;
+        }
+
+        .clock {
+            font-size: 3rem;
+            font-weight: bold;
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 40px 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .app-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .app-item:active {
+            transform: scale(0.9);
+        }
+
+        .icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .app-name {
+            margin-top: 8px;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .bottom-dock {
+            position: absolute;
+            bottom: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 25px;
+            display: flex;
+            gap: 20px;
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="clock" id="time">12:00</div>
+        <p>नमस्ते, आपका स्वागत है!</p>
+    </div>
+
+    <div class="app-grid">
+        <div class="app-item" onclick="openApp('Free Fire')">
+            <div class="icon">🎮</div>
+            <div class="app-name">My Game</div>
+        </div>
+        <div class="app-item" onclick="openApp('Facebook')">
+            <div class="icon">FB</div>
+            <div class="app-name">Facebook</div>
+        </div>
+        <div class="app-item" onclick="openApp('YouTube')">
+            <div class="icon">YT</div>
+            <div class="app-name">YouTube</div>
+        </div>
+        <div class="app-item" onclick="openApp('Settings')">
+            <div class="icon">⚙️</div>
+            <div class="app-name">Settings</div>
+        </div>
+    </div>
+
+    <div class="bottom-dock">
+        <div class="app-item" onclick="openApp('Call')">
+            <div class="icon">📞</div>
+        </div>
+        <div class="app-item" onclick="openApp('Messages')">
+            <div class="icon">✉️</div>
+        </div>
+        <div class="app-item" onclick="openApp('Browser')">
+            <div class="icon">🌐</div>
+        </div>
+    </div>
+
+    <script>
+        // घड़ी अपडेट करने के लिए
+        function updateTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('time').innerText = `${hours}:${minutes}`;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // ऐप खोलने का फंक्शन (सिर्फ अलर्ट दिखाएगा)
+        function openApp(name) {
+            alert(name + " खुल रहा है...");
+        }
+    </script>
+
+</body>
+</html>
